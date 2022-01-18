@@ -6,6 +6,24 @@ from torch.utils.data import DataLoader as DL
 from tqdm import tqdm 
 
 def train(model, **kwargs):
+    """
+    Pytorch train wrapper.
+
+    Args:
+        model - a Neural network model
+
+    Kwargs:
+        (required) epochs -- total epochs \n
+        (required) criterion -- loss function \n
+        (required) optimizer -- model optimizer \n
+        (required) trainset -- train dataset \n
+        device -- force a device (default: cuda if exist else cpu) \n
+        batch_size -- train loader batch size (default: 256) \n
+        lr_scheduler -- optional post-epoch scheduler \n
+        batch_f -- runs post batch, receives batch stats \n
+        epoch_f -- runs post epoch, receives epoch stats
+
+    """
 
     missing_kwargs = []
 
@@ -26,20 +44,21 @@ def train(model, **kwargs):
 
     device = arg_opt('device', 'cuda' if torch.cuda.is_available() else 'cpu')
     batch_size = arg_opt('batch_size', default=256)
-    batch_size_test = 16
+    # batch_size_test = 16
     epoch, epochs = arg_opt('epoch', 0), arg_req('epochs')
 
     model = model.to(device)
     criterion = arg_req('criterion')
     optimizer = arg_req('optimizer')
     lr_scheduler = arg_opt('lr_scheduler')
-    trainset, testset = arg_req('trainset')
+    trainset = arg_req('trainset')
+    # testset = arg_req('testset')
 
     # Check params
     assert not any(missing_kwargs), f'Missing required args: {missing_kwargs}'
 
     train_loader = DL(trainset, batch_size, pin_memory=True, shuffle=True)
-    test_loader = DL(testset, batch_size_test, pin_memory=True)
+    # test_loader = DL(testset, batch_size_test, pin_memory=True)
 
     for e_curr in range(epoch, epochs):
 
@@ -58,8 +77,11 @@ def train(model, **kwargs):
 
             preds = torch.argmax(out, -1)
             corr, tot = (preds == labels).sum().item(), len(labels)
+            acc = corr / tot
             correct += corr
             total += tot
+
+            loop.set_postfix(acc=round(corr / total, 4))
 
             if batch_f != None:
                 batch_f({
